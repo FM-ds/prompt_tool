@@ -56,7 +56,7 @@
             <h6 id="progress_label"> /178 </h6>
             <div id="progressBar" class="progress-bar" role="progressbar" style="width: 0%" aria-valuenow="0"
                 aria-valuemin="0" aria-valuemax="178"></div>
-            
+
         </div>
         <table id="classificationTable" class="table mt-4 scrollable-table">
             <thead>
@@ -65,18 +65,19 @@
                     <th>Product Title</th>
                     <th id="breadcrumb-col"> Product Breadcrumb </th>
                     <th> Belongs </th>
+                    <th> Reason </th>
                 </tr>
             </thead>
             <tbody>
                 <!-- Classification rows will go here -->
             </tbody>
         </table>
-                <div>
+        <div>
             <label for="itemPrompt">Item Prompt:</label>
             <input type="text" id="itemPrompt" class="form-control">
             <label for="sizePrompt">Size Prompt:</label>
             <input type="text" id="sizePrompt" class="form-control">
-            <label for=""newName">New Name:</label>
+            <label for="" newName">New Name:</label>
             <input type="text" id="newName" class="form-control">
             <button id="submitBtn" class="btn btn-primary mt-3">Submit Prompt</button>
         </div>
@@ -127,26 +128,30 @@
                         tbody.innerHTML = ''; // Clear previous rows
                         classifications.forEach((item, index) => {
                             const row = tbody.insertRow();
-                            // if belongs is true, add a belongs class to the row; if not add a does-not-belong class
-                            if (item.belongs == "True"
-                            ) {
-                                row.classList.add('belongs');
-                            } else {
-                                row.classList.add('does-not-belong');
-                            }
                             const cellIndex = row.insertCell(0);
 
                             // add cells for the product title and product breadcrumb
                             const cellProductTitle = row.insertCell(1);
                             const cellProductBreadcrumb = row.insertCell(2);
                             const cellBelongs = row.insertCell(3);
+                            const cellReason = row.insertCell(4);
+
+                            // if belongs is true, add a belongs class to the row; if not add a does-not-belong class
+                            if (item.belongs == "True"
+                            ) {
+                                cellBelongs.classList.add('belongs');
+                            } else {
+                                cellBelongs.classList.add('does-not-belong');
+                            }
+
 
                             cellIndex.textContent = index + 1;
                             cellProductTitle.textContent = item.product_title;
                             cellProductBreadcrumb.textContent = item.product_breadcrumb;
                             cellBelongs.textContent = item.belongs;
+                            cellReason.textContent = item.reason;
 
-                            
+
 
                         });
                     } catch (error) {
