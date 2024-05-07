@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Classification and Prompt Interface</title>
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <style>
+        .scrollable-table {
+            display: block;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .scrollable-table thead th {
+            position: sticky;
+            top: 0;
+            background-color: #fff;
+            /* Match the background to your design */
+            z-index: 2;
+            /* Ensure it stays on top of other content */
+        }
+
+        .scrollable-table tbody tr:nth-child(odd) {
+            background-color: #f2f2f2;
+            /* Zebra striping for rows, optional */
+        }
+
+        .scrollable-table tbody tr:nth-child(even) {
+            background-color: #ffffff;
+            /* Zebra striping for rows, optional */
+        }
+
+        .belongs {
+            background-color: #d4edda !important;
+        }
+
+        .does-not-belong {
+            background-color: #f8d7da !important;
+        }
+
+        #breadcrumb-col {
+            width: 30%;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1 id="description" class="mt-3"></h1>
+        <h2 id="humanDescription" class="mb-3"></h2>
+        <div class="progress">
+            <h6 id="progress_label"> /178 </h6>
+            <div id="progressBar" class="progress-bar" role="progressbar" style="width: 0%" aria-valuenow="0"
+                aria-valuemin="0" aria-valuemax="178"></div>
+            
+        </div>
+        <table id="classificationTable" class="table mt-4 scrollable-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Product Title</th>
+                    <th id="breadcrumb-col"> Product Breadcrumb </th>
+                    <th> Belongs </th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Classification rows will go here -->
+            </tbody>
+        </table>
+                <div>
+            <label for="itemPrompt">Item Prompt:</label>
+            <input type="text" id="itemPrompt" class="form-control">
+            <label for="sizePrompt">Size Prompt:</label>
+            <input type="text" id="sizePrompt" class="form-control">
+            <label for=""newName">New Name:</label>
+            <input type="text" id="newName" class="form-control">
+            <button id="submitBtn" class="btn btn-primary mt-3">Submit Prompt</button>
+        </div>
+        <hr>
+    </div>
+
+    <script>
+
+        const FUNCTION_URL = 'https://jayhkzi3etjwjensnbmllw7da40lthqh.lambda-url.eu-west-2.on.aws'; // Replace with your actual URL
+
+        document.getElementById('submitBtn').addEventListener('click', submitPrompt);
+
+        function fetchItem() {
+            $.ajax({
+                url: `${FUNCTION_URL}?action=get_item`, // Endpoint with action parameter
+                type: 'GET',
+                success: function (response) {
+                    console.log("Raw response from get_item:", response); // Log raw response for debugging
+                    try {
+                        const data = response;
+                        document.getElementById('description').textContent = data.description;
+                        document.getElementById('humanDescription').textContent = data.Human_desc;
+                        document.getElementById('description').setAttribute('data-cpi-id', data.cpi_id); // Store cpi_id for later use
+                        document.getElementById('progressBar').style.width = `${(data.distinct_cpi_ids_in_prompts / 178) * 100}%`;
+                        document.getElementById('progressBar').setAttribute('aria-valuenow', data.distinct_cpi_ids_in_prompts);
+
+                        document.getElementById('progress_label').textContent = ` ${data.distinct_cpi_ids_in_prompts} / 178`;
+                        fetchClassifications(data.cpi_id); // Call to fetch classifications
+                    } catch (error) {
+                        console.error('Error parsing JSON from get_item:', error);
+                    }
+                },
+                error: function (xhr, status, error) {
+                    console.error('Error fetching item:', error);
+                }
+            });
+        }
+
+        function fetchClassifications(cpi_id) {
+            $.ajax({
+                url: `${FUNCTION_URL}?action=get_classifications&cpi_id=${cpi_id}`, // Endpoint with action parameter
+                type: 'GET',
+                success: function (response) {
+                    console.log("Raw response for classifications:", response); // Log raw response for debugging
+                    try {
+                        const classifications = response;
+                        const tbody = document.getElementById('classificationTable').getElementsByTagName('tbody')[0];
+                        tbody.innerHTML = ''; // Clear previous rows
+                        classifications.forEach((item, index) => {
+                            const row = tbody.insertRow();
+                            // if belongs is true, add a belongs class to the row; if not add a does-not-belong class
+                            if (item.belongs == "True"
+                            ) {
+                                row.classList.add('belongs');
+                            } else {
+                                row.classList.add('does-not-belong');
+                            }
+                            const cellIndex = row.insertCell(0);
+
+                            // add cells for the product title and product breadcrumb
+                            const cellProductTitle = row.insertCell(1);
+                            const cellProductBreadcrumb = row.insertCell(2);
+                            const cellBelongs = row.insertCell(3);
+
+                            cellIndex.textContent = index + 1;
+                            cellProductTitle.textContent = item.product_title;
+                            cellProductBreadcrumb.textContent = item.product_breadcrumb;
+                            cellBelongs.textContent = item.belongs;
+
+                            
+
+                        });
+                    } catch (error) {
+                        console.error('Error parsing classifications JSON:', error);
+                    }
+                },
+                error: function (xhr, status, error) {
+                    console.error('Error fetching classifications:', error);
+                }
+            });
+        }
+
+        function submitPrompt() {
+            const itemPrompt = document.getElementById('itemPrompt').value;
+            const sizePrompt = document.getElementById('sizePrompt').value;
+            const newName = document.getElementById('newName').value;
+            const cpiId = document.getElementById('description').getAttribute('data-cpi-id'); // Retrieve stored cpi_id
+            $.ajax({
+                url: `${FUNCTION_URL}?action=add_prompt&cpi_id=${cpiId}&item_prompt=${encodeURIComponent(itemPrompt)}&size_prompt=${encodeURIComponent(sizePrompt)}&new_name=${encodeURIComponent(newName)}`, // Endpoint with action parameter
+                type: 'GET',
+                success: function (response) {
+                    console.log('Response from submit:', response); // Log response for debugging
+                    try {
+                        const result = JSON.parse(response);
+                        console.log('Prompt submitted successfully:', result);
+                        fetchItem(); // Fetch new item after submitting
+                    } catch (error) {
+                        console.error('Error parsing submit response JSON:', error);
+                    }
+                },
+                error: function (xhr, status, error) {
+                    console.error('Error submitting prompt:', error);
+                }
+            });
+        }
+
+        // Initial fetch when page loads
+        fetchItem();
+
+
+
+    </script>
+</body>
+
+</html>
